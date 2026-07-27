@@ -1,0 +1,49 @@
+name: notion-write
+on:
+  repository_dispatch:
+    types: [todo_done, todo_create]
+
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Todo in Notion abhaken
+        if: github.event.action == 'todo_done'
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          PAGE_ID: ${{ github.event.client_payload.page_id }}
+        run: |
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          curl -sf -X PATCH "https://api.notion.com/v1/pages/${PAGE_ID}" \
+            -H "Authorization: Bearer ${NOTION_TOKEN}" \
+            -H "Notion-Version: 2022-06-28" \
+            -H "Content-Type: application/json" \
+            -d "{\"properties\":{\"Erledigt\":{\"checkbox\":true},\"Erledigt am\":{\"date\":{\"start\":\"${NOW}\"}}}}" > /dev/null
+          echo "Abgehakt: ${PAGE_ID}"
+
+      - name: Todo in Notion anlegen
+        if: github.event.action == 'todo_create'
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          TODO_NAME: ${{ github.event.client_payload.name }}
+          TODO_ABT: ${{ github.event.client_payload.abt }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          body = {
+            "parent": {"database_id": "5163053d-7ff9-485c-8e73-95d0ec9d5389"},
+            "properties": {
+              "Name": {"title": [{"text": {"content": os.environ["TODO_NAME"][:200]}}]},
+              "Abteilung": {"select": {"name": os.environ.get("TODO_ABT") or "Privat"}},
+              "Quelle": {"select": {"name": "Text"}}
+            }
+          }
+          req = urllib.request.Request(
+            "https://api.notion.com/v1/pages",
+            data=json.dumps(body).encode(),
+            headers={"Authorization": "Bearer " + os.environ["NOTION_TOKEN"],
+                     "Notion-Version": "2022-06-28",
+                     "Content-Type": "application/json"},
+            method="POST")
+          print(urllib.request.urlopen(req).status)
+          PY
