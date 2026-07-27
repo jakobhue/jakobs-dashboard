@@ -542,6 +542,23 @@ async function refreshWeather() {
 
 render();
 refreshWeather();
+
+// Automatisch neu laden, sobald eine neue Version veröffentlicht wurde
+let __selfSnapshot = null;
+async function checkNewVersion() {
+  try {
+    const url = location.href.split('#')[0].split('?')[0] + '?v=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) return;
+    const t = await r.text();
+    if (!t.includes('"ct"')) return;
+    if (__selfSnapshot === null) { __selfSnapshot = t; return; }
+    if (t !== __selfSnapshot) location.reload();
+  } catch (e) { /* offline oder Artefakt-Kontext: ignorieren */ }
+}
+checkNewVersion();
+setInterval(checkNewVersion, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkNewVersion(); });
 </script>
 </body>
 </html>
