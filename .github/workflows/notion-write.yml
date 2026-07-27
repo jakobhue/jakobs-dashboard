@@ -1,10 +1,17 @@
-name: notion-write
+name: dashboard
 on:
   repository_dispatch:
     types: [todo_done, todo_create]
+  schedule:
+    - cron: '7 5-21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   write:
+    if: github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Todo in Notion abhaken
@@ -47,3 +54,29 @@ jobs:
             method="POST")
           print(urllib.request.urlopen(req).status)
           PY
+
+  rebuild:
+    needs: write
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Frische Daten aus Notion holen
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: |
+          sleep 5
+          pip install cryptography -q
+          python3 fetch_data.py
+      - name: Seite bauen und veroeffentlichen
+        env:
+          PAGES_PASSWORD: ${{ secrets.PAGES_PASSWORD }}
+        run: |
+          python3 build.py "$PAGES_PASSWORD"
+          rm -f data.json
+          git config user.name "dashboard-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git pull --rebase origin main
+          git add index.html
+          git diff --cached --quiet || git commit -m "Automatische Aktualisierung"
+          git push
