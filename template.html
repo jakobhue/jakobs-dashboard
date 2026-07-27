@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Jakobs Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --page:      #070707;
+    --surface:   #101010;
+    --ink:       #f1f1f1;
+    --ink-2:     #b8b8b2;
+    --muted:     #8a8a85;
+    --grid:      rgba(255,255,255,0.08);
+    --border:    rgba(255,255,255,0.12);
+    --privat:    #3987e5;
+    --hma:       #d95926;
+    --mediaap:   #9085e9;
+    --selbst:    #0ca30c;
+    --critical:  #d03b3b;
+    --critical-text: #e05c5c;
+    --good:      #0ca30c;
+    --good-text: #0ca30c;
+    --warn-bg:   rgba(250,178,25,0.08);
+    --sans:      "DM Sans", system-ui, -apple-system, sans-serif;
+    --disp:      "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono:      ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--sans);
+    background: var(--page);
+    background-image: radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color: var(--ink);
+    padding: 32px 26px 44px;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  h1 { font-family: var(--disp); font-size: 30px; font-weight: 400; letter-spacing: -0.02em; }
+  .stand { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.02em; }
+  .sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    color: var(--good-text); text-transform: uppercase;
+  }
+  .live-badge::before { content: ""; width: 6px; height: 6px; background: var(--good); }
+  .refresh-btn {
+    margin-left: auto; font-family: var(--sans); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--border); border-radius: 0;
+    padding: 8px 14px; cursor: pointer;
+  }
+  .refresh-btn:hover { background: var(--ink); color: var(--page); border-color: var(--ink); }
+  .refresh-btn:disabled { opacity: 0.4; cursor: wait; }
+  .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--grid); }
+  .tab {
+    font-family: var(--sans); font-size: 11px; font-weight: 500; cursor: pointer;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    background: transparent; color: var(--muted);
+    border: none; border-bottom: 2px solid transparent;
+    padding: 10px 18px 12px;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+  #banner {
+    display: none; margin-bottom: 16px;
+    border: 1px solid var(--critical); background: rgba(208,59,59,0.08);
+    padding: 13px 16px; font-size: 13px; line-height: 1.55;
+  }
+  #toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--page);
+    padding: 10px 18px; font-family: var(--mono); font-size: 12px;
+    opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 10;
+    max-width: 90vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toprow { display: grid; grid-template-columns: 1.2fr 1.1fr 0.55fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 980px) { .toprow { grid-template-columns: 1fr; } }
+  .toprow .weather, .toprow .training { margin-bottom: 0; }
+  .rech-card { cursor: pointer; }
+  .rech-card:hover { border-color: var(--ink-2); }
+  .weather {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 13px 17px; margin-bottom: 12px; font-size: 13px;
+  }
+  .weather .now { font-family: var(--disp); font-size: 22px; font-weight: 500; }
+  .weather .cond { color: var(--ink-2); }
+  .weather .day { color: var(--ink-2); border-left: 1px solid var(--grid); padding-left: 16px; }
+  .weather .day b { color: var(--ink); font-weight: 500; }
+  .training {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px;
+    background: var(--warn-bg); border: 1px solid var(--border);
+    padding: 13px 17px; margin-bottom: 12px; font-size: 13.5px;
+  }
+  .training .t-label { font-weight: 700; }
+  .t-gap {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; padding: 3px 8px;
+    color: var(--critical-text); border: 1px solid var(--critical-text); white-space: nowrap;
+  }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); padding: 15px 17px; }
+  .tile .label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .tile .value { font-family: var(--disp); font-size: 32px; font-weight: 400; line-height: 1.05; letter-spacing: -0.02em; }
+  .tile .hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .tile.alert .value { color: var(--critical); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cols > * { min-width: 0; align-self: start; }
+  @media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) {
+    #calList .todo { flex-wrap: wrap; }
+    #calList .todo > span:first-child { width: 56px !important; font-size: 11px !important; }
+    #calList .todo > span:nth-child(2) { width: 38px !important; }
+    #calList .b-over { flex-basis: 100%; width: max-content; margin-left: 0; margin-top: 2px; }
+    .newform { flex-wrap: wrap; }
+    .newform input[type=text] { flex-basis: 100%; }
+  }
+  .panel { background: var(--surface); border: 1px solid var(--border); padding: 19px 19px 15px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .panel h2 { font-family: var(--disp); font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+  .panel .src { font-size: 11px; color: var(--muted); margin-bottom: 13px; }
+  .newform { display: flex; gap: 8px; margin-bottom: 8px; }
+  .newform input[type=text] {
+    flex: 1; min-width: 0; font-family: var(--sans); font-size: 13px;
+    background: var(--page); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 0; padding: 9px 11px;
+  }
+  .newform input[type=text]:focus { outline: none; border-color: var(--ink-2); }
+  .newform select {
+    font-family: var(--sans); font-size: 12.5px; background: var(--page); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 0; padding: 9px 6px; max-width: 130px;
+  }
+  .newform button {
+    font-family: var(--sans); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--ink); color: var(--page); border: 1px solid var(--ink);
+    border-radius: 0; padding: 9px 15px; cursor: pointer;
+  }
+  .newform button:hover { background: transparent; color: var(--ink); }
+  .newform button:disabled { opacity: 0.4; cursor: wait; }
+  .group-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-2); margin: 16px 0 6px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 0; flex: none; }
+  .todo { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--grid); font-size: 13.5px; }
+  .todo:last-of-type { border-bottom: none; }
+  .todo .check {
+    flex: none; width: 17px; height: 17px; border-radius: 0;
+    border: 1px solid var(--muted); background: none; cursor: pointer;
+    align-self: center; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; line-height: 1; color: var(--page); padding: 0;
+  }
+  .todo .check:hover { border-color: var(--good); }
+  .todo.done .check { background: var(--good); border-color: var(--good); }
+  .todo.done .name { text-decoration: line-through; color: var(--muted); }
+  .todo.pending { opacity: 0.55; }
+  .todo .name { flex: 1; min-width: 0; }
+  .badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; padding: 3px 8px; white-space: nowrap; flex: none; }
+  .b-hoch { color: var(--critical-text); border: 1px solid var(--critical-text); }
+  .b-over { color: #fff; background: var(--critical); }
+  .chart { margin-top: 17px; padding-top: 13px; border-top: 1px solid var(--grid); }
+  .chart-title { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; color: var(--ink-2); margin-bottom: 9px; }
+  .bar-row { display: grid; grid-template-columns: 110px 1fr 24px; align-items: center; gap: 9px; margin-bottom: 6px; font-size: 12px; }
+  .bar-row .bl { color: var(--ink-2); text-align: right; }
+  .bar-track { height: 13px; position: relative; }
+  .bar { height: 13px; }
+  .bar-row .bv { font-family: var(--mono); font-size: 11.5px; }
+  .mail { padding: 8px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+  .mail:last-of-type { border-bottom: none; }
+  .mail .top { display: flex; justify-content: space-between; gap: 10px; }
+  .mail .from { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mail .when { font-family: var(--mono); color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+  .mail .subj { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .tag-wichtig { color: var(--good-text); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .notes {
+    margin-top: 20px; background: var(--warn-bg);
+    border: 1px solid var(--border);
+    padding: 15px 17px; font-size: 12.5px; color: var(--ink-2); line-height: 1.6;
+  }
+  .notes strong { color: var(--ink); }
+  footer { margin-top: 16px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Jakobs Dashboard</h1>
+    <span class="stand" id="stand">Stand: __STAND__</span>
+    <span class="live-badge">Live-Daten</span>
+    
+  </header>
+  <p class="sub">Quellen: Notion-Datenbank „Todos", Gmail-Posteingang &amp; Wetter Wien · Abhaken &amp; Erstellen direkt hier, Klick auf den Text öffnet das Original</p>
+
+  <div class="tabs">
+    <button class="tab active" id="tabMain" onclick="switchTab('main')">Übersicht</button>
+    <button class="tab" id="tabRech" onclick="switchTab('rech')">🧾 Rechnungen <span id="rechCount"></span></button>
+  </div>
+
+  <div id="mainView">
+  <div class="toprow">
+  <div class="weather" id="weather">
+    <span class="now">🌦️ 25°</span>
+    <span class="cond">Wien · leichter Regen · heute 26° / 18°, 35 % Regenrisiko</span>
+    <span class="day"><b>Di</b> 30°</span>
+    <span class="day"><b>Mi</b> 33°</span>
+    <span class="day"><b>Do</b> 35°</span>
+    <span class="day"><b>Fr</b> 36°</span>
+  </div>
+  <div class="training" id="training">
+    <span class="t-label">🏋️ Training:</span>
+    <span id="trainingText">Kein erledigtes Training in deiner Todo-Datenbank erfasst, der Eintrag „trainieren" ist seit <b>20.07.</b> offen. Hak ihn heute direkt hier ab!</span>
+    <span class="t-gap" id="trainingGap">Datenlücke – Quelle fehlt</span>
+  </div>
+  <div class="tile rech-card" onclick="switchTab('rech')" title="Rechnungen-Tab öffnen">
+    <div class="label">🧾 Offene Rechnungen</div>
+    <div class="value" id="rechTileCount">–</div>
+    <div class="hint">antippen zum Öffnen →</div>
+  </div>
+  </div>
+
+  <section class="panel" style="margin-bottom:14px">
+    <div class="panel-head">
+      <h2>📅 Termine – nächste 7 Tage</h2>
+      <span class="live-badge">Live</span>
+    </div>
+    <div class="src">Google Kalender: Privat, Media Apparat, Hand mit Auge (inkl. Geburtstage)</div>
+    <div id="calList"></div>
+    <div class="newform" style="margin-top:12px;flex-wrap:wrap">
+      <input type="text" id="evTitle" placeholder="Neuer Termin…" maxlength="120" style="flex:2;min-width:140px">
+      <input type="date" id="evDate" style="font-family:var(--sans);font-size:12.5px;background:var(--page);color:var(--ink);border:1px solid var(--border);border-radius:0;padding:8px 6px">
+      <input type="time" id="evFrom" value="10:00" style="font-family:var(--sans);font-size:12.5px;background:var(--page);color:var(--ink);border:1px solid var(--border);border-radius:0;padding:8px 4px">
+      <input type="time" id="evTo" value="11:00" style="font-family:var(--sans);font-size:12.5px;background:var(--page);color:var(--ink);border:1px solid var(--border);border-radius:0;padding:8px 4px">
+      <select id="evCal">
+        <option value="jakob.huetter@gmail.com">Privat</option>
+        <option value="jh@mediaapparat.com">Media Apparat</option>
+        <option value="handmitauge@gmail.com">Hand mit Auge</option>
+      </select>
+      <button onclick="quickCal()">＋ Termin</button>
+    </div>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Todo OS – offene Aufgaben</h2>
+        <span class="live-badge">Live</span>
+      </div>
+      <div class="src">Notion → „Todos" · Kästchen = abhaken (wird automatisch in Notion gespeichert)</div>
+
+      <div id="patPanel" style="display:none;border:1px solid var(--border);padding:13px 15px;margin-bottom:10px;font-size:12.5px;line-height:1.55">
+        <b>Einmalige Einrichtung:</b> Damit Abhaken &amp; Erstellen von hier aus funktionieren, füge deinen GitHub-Token ein (ich zeige dir im Chat, wie du ihn in 2 Minuten erstellst). Er bleibt nur auf diesem Gerät gespeichert.
+        <div class="newform" style="margin-top:9px;margin-bottom:0">
+          <input type="password" id="patInput" placeholder="github_pat_…">
+          <button onclick="savePat()">Speichern</button>
+        </div>
+      </div>
+
+      <div class="newform">
+        <input type="text" id="newName" placeholder="Neues Todo…" maxlength="200">
+        <select id="newAbt">
+          <option value="Privat">Privat</option>
+          <option value="Selbstständig">Selbstständig</option>
+          <option value="Hand mit Auge">Hand mit Auge</option>
+          <option value="Media Apparat">Media Apparat</option>
+        </select>
+        <button id="createBtn" onclick="createTodo(false)">＋ Erstellen</button>
+      </div>
+
+      <div id="todoList"></div>
+
+      <div class="chart">
+        <div class="chart-title">Offene Aufgaben nach Abteilung</div>
+        <div id="bars"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Posteingang – neueste ungelesene</h2>
+        <span class="live-badge">Live</span>
+      </div>
+      <div class="src" id="mailSrc">Gmail (inkl. Media Apparat) · gefiltert, ohne Werbung · ~201 ungelesen gesamt</div>
+      <div id="mailList"></div>
+    </section>
+  </div>
+
+  </div><!-- /mainView -->
+
+  <div id="rechView" style="display:none">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>🧾 Offene Rechnungen</h2>
+        <span class="live-badge">Live</span>
+      </div>
+      <div class="src">Alle offenen Todos mit „Rechnung", „Anzahlung" oder „Nachverrechnung" im Namen · Kästchen = abhaken</div>
+      <div class="newform">
+        <input type="text" id="newRechName" placeholder="Neue Rechnung, z. B. Rechnung Max Muster – Projekt X" maxlength="200">
+        <select id="newRechAbt">
+          <option value="Hand mit Auge">Hand mit Auge</option>
+          <option value="Selbstständig">Selbstständig</option>
+          <option value="Media Apparat">Media Apparat</option>
+          <option value="Privat">Privat</option>
+        </select>
+        <button id="createRechBtn" onclick="createTodo(true)">＋ Erstellen</button>
+      </div>
+      <div id="rechList"></div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <strong>Transparenz-Hinweise:</strong> Alle Einträge sind echte Live-Daten aus Notion, Gmail und dem Wetterdienst, keine Beispieldaten.
+    Einschränkungen: (1) <strong>Interaktivität</strong> braucht Freigaben: gib diesem Artefakt in der Desktop-App die Connectoren Notion (Abhaken/Erstellen), Gmail (Mails) und Google Calendar (Termine) frei. (2) <strong>Training:</strong> keine echte Datenquelle, es zählt das jüngste erledigte Todo mit „train"/„Sport" im Namen. (3) XP-Formel nicht auslesbar, Punkte-Summe selbst berechnet; erledigte Todos ohne „Erledigt am"-Datum fehlen in der 7-Tage-Zählung. (4) Termine kommen aus den Kalendern Privat, Media Apparat und Hand mit Auge; weitere (Familie, SoJaRo, EVENTS UND PRODUKTION …) sind noch nicht eingebunden.
+  </div>
+
+  <footer>Aktualisiert sich stündlich (07–23 Uhr Wien) · Abhaken/Erstellen schreibt über GitHub → Notion (dauert ~30 s im Hintergrund) · <a href="#" onclick="showPatPanel();return false" style="color:var(--muted)">⚙ Token</a></footer>
+
+  <div id="toast"></div>
+
+<script>
+"use strict";
+const ABT_COLORS = { "Hand mit Auge": "var(--hma)", "Privat": "var(--privat)", "Media Apparat": "var(--mediaap)", "Selbstständig": "var(--selbst)" };
+const ABT_ORDER = ["Hand mit Auge", "Privat", "Media Apparat", "Selbstständig"];
+const CAL_COLORS = { "Media Apparat":"var(--mediaap)", "Privat":"var(--privat)", "Hand mit Auge":"var(--hma)", "Geburtstag":"var(--muted)" };
+const RECH_RE = /rechnung|anzahlung|nachverrechn/i;
+
+// Daten werden beim Build aus data.json injiziert
+const __D = __DATA__;
+let rows = __D.rows;
+let punkte7 = __D.punkte7, done7 = __D.done7;
+let mailTotal = __D.mailTotal;
+let mails = __D.mails;
+let events = __D.events;
+
+const GH_REPO = "jakobhue/jakobs-dashboard";
+let _tt;
+function toast(msg, ms) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.opacity = "1";
+  clearTimeout(_tt); _tt = setTimeout(() => { t.style.opacity = "0"; }, ms || 2600);
+}
+const mem = {};
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { mem[k] = v; } }
+function loadKey(k) { try { return localStorage.getItem(k); } catch (e) { return mem[k]; } }
+function getPat() { return loadKey("jd_pat") || ""; }
+function showPatPanel() { document.getElementById("patPanel").style.display = "block"; switchTab("main"); document.getElementById("patInput").focus(); }
+function savePat() {
+  const v = document.getElementById("patInput").value.trim();
+  if (!v) return;
+  store("jd_pat", v);
+  document.getElementById("patPanel").style.display = "none";
+  toast("✓ Token gespeichert – Abhaken ist jetzt aktiv");
+}
+async function dispatchGH(eventType, payload) {
+  const resp = await fetch("https://api.github.com/repos/" + GH_REPO + "/dispatches", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + getPat(), "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, client_payload: payload })
+  });
+  if (resp.status === 401 || resp.status === 403 || resp.status === 404) { showPatPanel(); throw new Error("Token ungültig oder ohne Zugriff"); }
+  if (resp.status !== 204) throw new Error("GitHub antwortete mit " + resp.status);
+}
+// Overlay: lokal abgehakte Todos bis zur nächsten Stunden-Aktualisierung merken
+let _ov = {};
+try { const p = JSON.parse(loadKey("jd_done") || "{}"); _ov = Array.isArray(p) ? Object.fromEntries(p.map(id => [id, Date.now()])) : p; } catch (e) {}
+const _cut = Date.now() - 24 * 3600 * 1000;
+for (const k in _ov) if (_ov[k] < _cut) delete _ov[k];
+const doneOverlay = { has: id => id in _ov, add: id => { _ov[id] = Date.now(); }, delete: id => { delete _ov[id]; } };
+const saveOverlay = () => store("jd_done", JSON.stringify(_ov));
+rows.forEach(r => { if (r.done) doneOverlay.delete(r.id); else if (doneOverlay.has(r.id)) { r.done = true; r.doneAt = null; } });
+saveOverlay();
+
+async function checkOff(id) {
+  const r = rows.find(x => x.id === id);
+  if (!r || r.done) return;
+  if (!getPat()) { showPatPanel(); toast("Einmalig Token eintragen, dann klappt das Abhaken", 3500); return; }
+  r.done = true; doneOverlay.add(id); saveOverlay(); render();
+  toast("✓ Abgehakt – wird in Notion gespeichert…");
+  try {
+    await dispatchGH("todo_done", { page_id: id });
+  } catch (e) {
+    r.done = false; doneOverlay.delete(id); saveOverlay(); render();
+    toast("⚠ Nicht gespeichert: " + e.message, 4500);
+  }
+}
+async function createTodo(fromRech) {
+  const input = document.getElementById(fromRech ? "newRechName" : "newName");
+  const name = input.value.trim();
+  const abt = document.getElementById(fromRech ? "newRechAbt" : "newAbt").value;
+  if (!name) { input.focus(); return; }
+  if (!getPat()) { showPatPanel(); toast("Einmalig Token eintragen, dann klappt das Erstellen", 3500); return; }
+  const temp = { id: "temp-" + Math.random().toString(36).slice(2), name, prio: null, abt, punkte: null, faellig: null, done: false, doneAt: null, temp: true };
+  rows.push(temp); input.value = ""; render();
+  toast("✓ Wird in Notion angelegt…");
+  try {
+    await dispatchGH("todo_create", { name, abt });
+    toast("✓ In Notion angelegt: " + name.slice(0, 40));
+  } catch (e) {
+    rows.splice(rows.indexOf(temp), 1); render();
+    toast("⚠ Nicht angelegt: " + e.message, 4500);
+  }
+}
+function quickCal() {
+  const title = document.getElementById("evTitle").value.trim();
+  const date = document.getElementById("evDate").value;
+  const from = document.getElementById("evFrom").value, to = document.getElementById("evTo").value;
+  const cal = document.getElementById("evCal").value;
+  if (!title || !date) { toast("Titel und Datum angeben", 3000); return; }
+  const d = date.replace(/-/g, "");
+  const url = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(title) +
+    "&dates=" + d + "T" + from.replace(":", "") + "00/" + d + "T" + to.replace(":", "") + "00" +
+    "&ctz=Europe/Vienna&src=" + encodeURIComponent(cal);
+  window.open(url, "_blank");
+  toast("Google Kalender öffnet vorausgefüllt – nur noch Speichern tippen");
+}
+
+let activeTab = "main";
+function switchTab(t) {
+  activeTab = t;
+  document.getElementById("mainView").style.display = t === "main" ? "" : "none";
+  document.getElementById("rechView").style.display = t === "rech" ? "" : "none";
+  document.getElementById("tabMain").className = "tab" + (t === "main" ? " active" : "");
+  document.getElementById("tabRech").className = "tab" + (t === "rech" ? " active" : "");
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtDue = d => { const p = d.split("-"); return p[2] + "." + p[1] + "."; };
+const notionUrl = id => "https://www.notion.so/" + String(id).replace(/-/g, "");
+
+function todoRow(r, showAbtDot) {
+  const over = r.faellig && r.faellig < todayStr();
+  return '<div class="todo' + (r.done ? " done" : "") + '">' +
+    (r.temp
+      ? '<span class="check" style="cursor:default;opacity:0.4" title="frisch angelegt – abhakbar nach der nächsten Aktualisierung"></span>'
+      : '<button class="check" onclick="checkOff(\'' + r.id + '\')" ' + (r.done ? "disabled" : "") + ' title="Abhaken (speichert in Notion)">' + (r.done ? "✓" : "") + "</button>") +
+    (showAbtDot ? '<span class="dot" style="align-self:center;background:' + (ABT_COLORS[r.abt] || "var(--muted)") + '"></span>' : "") +
+    '<a class="name" href="' + notionUrl(r.id) + '" target="_blank" style="color:inherit;text-decoration:none">' + esc(r.name) + "</a>" +
+    (r.prio === "Hoch" ? '<span class="badge b-hoch">Hoch</span>' : "") +
+    (over ? '<span class="badge b-over">fällig ' + fmtDue(r.faellig) + "</span>" : "") +
+    "</div>";
+}
+
+function render() {
+  const open = rows.filter(r => !r.done);
+  const overdue = open.filter(r => r.faellig && r.faellig < todayStr());
+  const hoch = open.filter(r => r.prio === "Hoch");
+
+  document.getElementById("tiles").innerHTML =
+    tile("Offene Todos", open.length, "davon " + hoch.length + " mit Priorität Hoch", false) +
+    tile("Überfällig", overdue.length, overdue.slice(0,2).map(r => esc(r.name.slice(0,18))).join(" · ") || "nichts überfällig 🎉", overdue.length > 0) +
+    tile("Punkte, letzte 7 Tage", punkte7, done7 + " Todos erledigt", false) +
+    tile("Ungelesen im Posteingang", mailTotal, "Gmail-Posteingang", false);
+
+  let html = "";
+  const visible = rows.filter(r => !r.done || doneOverlay.has(r.id) || r.temp);
+  for (const abt of ABT_ORDER) {
+    const grp = visible.filter(r => r.abt === abt);
+    if (!grp.length) continue;
+    html += '<div class="group-label"><span class="dot" style="background:' + ABT_COLORS[abt] + '"></span>' + esc(abt) + " · " + grp.filter(r => !r.done).length + "</div>";
+    for (const r of grp) html += todoRow(r, false);
+  }
+  const noAbt = visible.filter(r => !ABT_COLORS[r.abt]);
+  if (noAbt.length) {
+    html += '<div class="group-label"><span class="dot" style="background:var(--muted)"></span>Ohne Abteilung · ' + noAbt.length + "</div>";
+    for (const r of noAbt) html += todoRow(r, false);
+  }
+  document.getElementById("todoList").innerHTML = html || '<div class="src">Keine offenen Todos 🎉</div>';
+
+  const counts = ABT_ORDER.map(a => ({a, n: open.filter(r => r.abt === a).length}));
+  const max = Math.max(1, ...counts.map(c => c.n));
+  document.getElementById("bars").innerHTML = counts.map(c =>
+    '<div class="bar-row"><span class="bl">' + esc(c.a) + '</span><div class="bar-track"><div class="bar" style="width:' + Math.max(2, c.n / max * 100) + "%;background:" + ABT_COLORS[c.a] + '"></div></div><span class="bv">' + c.n + "</span></div>").join("");
+
+  document.getElementById("mailSrc").textContent = "Gmail (inkl. Media Apparat) · gefiltert, ohne Werbung · " + mailTotal + " ungelesen gesamt";
+  document.getElementById("mailList").innerHTML = mails.map(m => {
+    const inner = '<div class="top"><span class="from">' + esc(m.from) + (m.important ? ' <span class="tag-wichtig">· Wichtig</span>' : "") + (m.acct ? ' <span style="color:var(--mediaap);font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase">· ' + esc(m.acct) + '</span>' : "") + '</span><span class="when">' + esc(m.date) + '</span></div><div class="subj">' + esc(m.subject) + "</div>";
+    return m.link
+      ? '<a class="mail" style="display:block;color:inherit;text-decoration:none" href="' + m.link + '" target="_blank" title="In Gmail öffnen">' + inner + "</a>"
+      : '<div class="mail">' + inner + "</div>";
+  }).join("");
+
+  let ch = "", lastDay = null;
+  for (const ev of events) {
+    const dayLabel = ev.day === lastDay ? "" : ev.day;
+    lastDay = ev.day;
+    const inner = '<span style="flex:none;width:74px;font-weight:500;color:var(--ink-2);font-size:12px">' + esc(dayLabel) + '</span>' +
+      '<span style="flex:none;width:44px;font-family:var(--mono);color:var(--muted);font-size:11px">' + esc(ev.time) + '</span>' +
+      '<span class="dot" style="align-self:center;background:' + (CAL_COLORS[ev.cal] || "var(--muted)") + '"></span>' +
+      '<span class="name">' + esc(ev.title) + (ev.meet ? ' <span style="color:var(--muted);font-size:11px">· Meet</span>' : "") + '</span>' +
+      (ev.conflict ? '<span class="badge b-over">Überschneidung</span>' : "");
+    ch += ev.link
+      ? '<a class="todo" style="gap:10px;text-decoration:none;color:inherit" href="' + ev.link + '" target="_blank" title="Im Kalender öffnen">' + inner + "</a>"
+      : '<div class="todo" style="gap:10px">' + inner + "</div>";
+  }
+  document.getElementById("calList").innerHTML = ch || '<div class="src">Keine Termine in den nächsten 7 Tagen 🎉</div>';
+
+  const rech = visible.filter(r => RECH_RE.test(r.name));
+  const rechOpen = rech.filter(r => !r.done).length;
+  document.getElementById("rechCount").textContent = rechOpen ? "· " + rechOpen : "";
+  document.getElementById("rechTileCount").textContent = rechOpen;
+  document.getElementById("rechList").innerHTML = rech.map(r => todoRow(r, true)).join("") || '<div class="src">Keine offenen Rechnungen 🎉</div>';
+
+  const trainDone = rows.filter(r => r.done && /train|sport/i.test(r.name) && r.doneAt).sort((a,b) => String(b.doneAt).localeCompare(String(a.doneAt)))[0];
+  if (trainDone) {
+    const days = Math.round((Date.now() - new Date(trainDone.doneAt).getTime()) / 86400000);
+    document.getElementById("trainingGap").style.display = "none";
+    document.getElementById("trainingText").innerHTML = days <= 3
+      ? "Letztes Training: <b>" + fmtDue(String(trainDone.doneAt).slice(0,10)) + "</b> (vor " + days + " Tag" + (days === 1 ? "" : "en") + "). Stark, dranbleiben! 💪"
+      : "Letztes Training: <b>" + fmtDue(String(trainDone.doneAt).slice(0,10)) + "</b>, das ist " + days + " Tage her. Zeit für eine Runde!";
+  }
+}
+function tile(label, value, hint, alert) {
+  return '<div class="tile' + (alert ? " alert" : "") + '"><div class="label">' + label + '</div><div class="value">' + value + '</div><div class="hint">' + hint + "</div></div>";
+}
+
+async function refreshWeather() {
+  try {
+    const resp = await fetch("https://api.open-meteo.com/v1/forecast?latitude=48.2082&longitude=16.3738&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FVienna&forecast_days=5");
+    const w = await resp.json();
+    const code = w.current.weather_code;
+    const emoji = code === 0 ? "☀️" : code < 3 ? "🌤️" : code < 45 ? "☁️" : code < 60 ? "🌫️" : code < 70 ? "🌧️" : code < 80 ? "🌨️" : code < 95 ? "🌦️" : "⛈️";
+    const dayNames = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+    let html = '<span class="now">' + emoji + " " + Math.round(w.current.temperature_2m) + "°</span>" +
+      '<span class="cond">Wien · heute ' + Math.round(w.daily.temperature_2m_max[0]) + "° / " + Math.round(w.daily.temperature_2m_min[0]) + "°, " + w.daily.precipitation_probability_max[0] + " % Regenrisiko</span>";
+    for (let i = 1; i < 5; i++) {
+      const d = new Date(w.daily.time[i] + "T12:00:00");
+      html += '<span class="day"><b>' + dayNames[d.getDay()] + "</b> " + Math.round(w.daily.temperature_2m_max[i]) + "°" + (w.daily.precipitation_probability_max[i] >= 30 ? " 🌧️" : "") + "</span>";
+    }
+    document.getElementById("weather").innerHTML = html;
+  } catch (e) { /* eingebaute Werte behalten */ }
+}
+
+render();
+refreshWeather();
+</script>
+</body>
+</html>

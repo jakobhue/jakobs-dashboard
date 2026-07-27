@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Jakobs Dashboard</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #f9f9f7; color: #0b0b0b;
+         display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+  @media (prefers-color-scheme: dark) { body { background: #0d0d0d; color: #fff; } .card { background: #1a1a19 !important; border-color: rgba(255,255,255,0.1) !important; } input { background: #0d0d0d !important; color: #fff !important; } }
+  .card { background: #fcfcfb; border: 1px solid rgba(11,11,11,0.1); border-radius: 14px; padding: 28px; width: min(90vw, 340px); text-align: center; }
+  h1 { font-size: 19px; margin: 0 0 6px; }
+  p { font-size: 13px; color: #898781; margin: 0 0 18px; }
+  input { font: inherit; width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(11,11,11,0.2); border-radius: 8px; margin-bottom: 10px; }
+  button { font: inherit; font-weight: 700; width: 100%; padding: 10px; border: none; border-radius: 8px; background: #0b0b0b; color: #fff; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { button { background: #fff; color: #0b0b0b; } }
+  #err { color: #d03b3b; font-size: 12.5px; min-height: 16px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🔒 Jakobs Dashboard</h1>
+  <p>Diese Seite ist verschlüsselt. Passwort eingeben:</p>
+  <form id="f"><input type="password" id="pw" placeholder="Passwort" autofocus autocomplete="current-password">
+  <button type="submit">Entsperren</button></form>
+  <div id="err"></div>
+</div>
+<script>
+const P = __PAYLOAD__;
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function unlock(pw) {
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt:b64(P.salt), iterations:600000, hash:"SHA-256"}, km, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(P.iv)}, key, b64(P.ct));
+  document.open(); document.write(new TextDecoder().decode(plain)); document.close();
+}
+document.getElementById("f").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pw = document.getElementById("pw").value;
+  try { await unlock(pw); try { localStorage.setItem("jd_pw", pw); } catch(_){} }
+  catch(_) { document.getElementById("err").textContent = "Falsches Passwort"; }
+});
+(async () => { try { const s = localStorage.getItem("jd_pw"); if (s) await unlock(s); } catch(_){} })();
+</script>
+</body>
+</html>
