@@ -196,7 +196,7 @@
     <h1>Jakobs Dashboard</h1>
     <span class="stand" id="stand">Stand: __STAND__</span>
     <span class="live-badge">Live-Daten</span>
-    
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshNow()" title="Neue Daten aus Notion, Gmail &amp; Kalender holen">↻ Aktualisieren</button>
   </header>
   <p class="sub">Quellen: Notion-Datenbank „Todos", Gmail-Posteingang &amp; Wetter Wien · Abhaken &amp; Erstellen direkt hier, Klick auf den Text öffnet das Original</p>
 
@@ -552,13 +552,34 @@ async function checkNewVersion() {
     if (!r.ok) return;
     const t = await r.text();
     if (!t.includes('"ct"')) return;
+    const el = document.getElementById("stand");
+    if (el) {
+      if (!el.dataset.base) el.dataset.base = el.textContent;
+      el.textContent = el.dataset.base + " · geprüft " + new Date().toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
+    }
     if (__selfSnapshot === null) { __selfSnapshot = t; return; }
     if (t !== __selfSnapshot) location.reload();
   } catch (e) { /* offline oder Artefakt-Kontext: ignorieren */ }
 }
 checkNewVersion();
-setInterval(checkNewVersion, 5 * 60 * 1000);
+setInterval(checkNewVersion, 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkNewVersion(); });
+window.addEventListener("focus", () => checkNewVersion());
+
+// Manueller Refresh: stoesst die GitHub Action an, die frische Notion-Daten holt
+async function refreshNow() {
+  const btn = document.getElementById("refreshBtn");
+  if (!getPat()) { showPatPanel(); toast("Einmalig Token eintragen, dann klappt das Aktualisieren", 3500); return; }
+  btn.disabled = true; btn.textContent = "↻ läuft…";
+  try {
+    await dispatchGH("refresh", {});
+    toast("✓ Aktualisierung angestoßen – frische Daten in ca. 2 Min, Seite lädt dann von selbst neu", 5000);
+    setTimeout(() => { btn.disabled = false; btn.textContent = "↻ Aktualisieren"; }, 120000);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "↻ Aktualisieren";
+    toast("⚠ " + e.message, 4500);
+  }
+}
 </script>
 </body>
 </html>
