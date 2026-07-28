@@ -1,9 +1,9 @@
 name: dashboard
 on:
   repository_dispatch:
-    types: [todo_done, todo_create]
+    types: [todo_done, todo_create, refresh]
   schedule:
-    - cron: '*/15 5-21 * * *'
+    - cron: '*/5 5-21 * * *'
   workflow_dispatch:
 
 permissions:
@@ -68,7 +68,22 @@ jobs:
           sleep 5
           pip install cryptography -q
           python3 fetch_data.py
+      - name: Pruefen ob sich etwas geaendert hat
+        id: diff
+        run: |
+          python3 - <<'PY'
+          import json, hashlib, os
+          d = json.load(open('data.json'))
+          d.pop('stand', None)
+          h = hashlib.sha256(json.dumps(d, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+          old = open('data.hash').read().strip() if os.path.exists('data.hash') else ''
+          open('data.hash', 'w').write(h)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('changed=' + ('yes' if h != old else 'no') + '\n')
+          print('changed:', h != old)
+          PY
       - name: Seite bauen und veroeffentlichen
+        if: steps.diff.outputs.changed == 'yes' || github.event_name != 'schedule'
         env:
           PAGES_PASSWORD: ${{ secrets.PAGES_PASSWORD }}
         run: |
@@ -76,7 +91,7 @@ jobs:
           rm -f data.json
           git config user.name "dashboard-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add index.html
+          git add index.html data.hash
           git diff --cached --quiet || git commit -m "Automatische Aktualisierung"
           git pull --rebase origin main
           git push origin HEAD:main
