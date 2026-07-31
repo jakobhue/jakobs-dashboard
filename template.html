@@ -261,7 +261,7 @@
       <div id="patPanel" style="display:none;border:1px solid var(--border);padding:13px 15px;margin-bottom:10px;font-size:12.5px;line-height:1.55">
         <b>Einmalige Einrichtung:</b> Damit Abhaken &amp; Erstellen von hier aus funktionieren, füge deinen GitHub-Token ein (ich zeige dir im Chat, wie du ihn in 2 Minuten erstellst). Er bleibt nur auf diesem Gerät gespeichert.
         <div class="newform" style="margin-top:9px;margin-bottom:0">
-          <input type="password" id="patInput" placeholder="github_pat_…">
+          <input type="text" id="patInput" name="jd-notatoken-9f3" placeholder="github_pat_…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other">
           <button onclick="savePat()">Speichern</button>
         </div>
       </div>
@@ -352,14 +352,23 @@ function toast(msg, ms) {
 const mem = {};
 function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { mem[k] = v; } }
 function loadKey(k) { try { return localStorage.getItem(k); } catch (e) { return mem[k]; } }
-function getPat() { return loadKey("jd_pat") || ""; }
+const BAKED_PAT = "__GHTOKEN__";
+function getPat() { return (BAKED_PAT && BAKED_PAT.indexOf("__GH") !== 0) ? BAKED_PAT : (loadKey("jd_pat") || ""); }
 function showPatPanel() { document.getElementById("patPanel").style.display = "block"; switchTab("main"); document.getElementById("patInput").focus(); }
-function savePat() {
+async function savePat() {
   const v = document.getElementById("patInput").value.trim();
-  if (!v) return;
+  if (!v) { toast("⚠ Das Feld ist leer – bitte den Token hineinkopieren (Strg+V)", 4500); document.getElementById("patInput").focus(); return; }
+  toast("Prüfe Token…");
+  try {
+    const r = await fetch("https://api.github.com/repos/" + GH_REPO, { headers: { "Authorization": "Bearer " + v, "Accept": "application/vnd.github+json" } });
+    if (!r.ok) { toast("⚠ Token ungültig oder ohne Zugriff auf das Repo (Fehler " + r.status + "). Bitte neuen Fine-grained-Token für jakobs-dashboard mit Contents: Read & Write erstellen.", 9000); return; }
+  } catch (e) { toast("⚠ Token-Prüfung fehlgeschlagen (offline?): " + e.message, 6000); return; }
   store("jd_pat", v);
+  let dauerhaft = false;
+  try { localStorage.setItem("jd_t", "1"); dauerhaft = localStorage.getItem("jd_t") === "1"; localStorage.removeItem("jd_t"); } catch (e) {}
   document.getElementById("patPanel").style.display = "none";
-  toast("✓ Token gespeichert – Abhaken ist jetzt aktiv");
+  if (dauerhaft) toast("✓ Token geprüft & gespeichert – Abhaken ist jetzt aktiv");
+  else toast("✓ Token gültig, aber diese Ansicht kann nichts dauerhaft speichern – nutze die Webseite jakobhue.github.io/jakobs-dashboard, dort bleibt er gemerkt.", 9000);
 }
 async function dispatchGH(eventType, payload) {
   const resp = await fetch("https://api.github.com/repos/" + GH_REPO + "/dispatches", {

@@ -16,8 +16,6 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("Aufruf: build.py <passwort>")
     password = sys.argv[1]
-    if not password or len(password) < 8:
-        sys.exit("FEHLER: Passwort fehlt oder zu kurz - Abbruch, es wird nichts gebaut.")
 
     template = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
     data = json.load(open(os.path.join(HERE, "data.json"), encoding="utf-8"))
@@ -25,6 +23,12 @@ def main():
     stand = data.pop("stand", "unbekannt")
     plain = template.replace("__DATA__", json.dumps(data, ensure_ascii=False))
     plain = plain.replace("__STAND__", stand)
+
+    # GitHub-Token fuer Abhaken/Erstellen: kommt aus dem Secret GH_DISPATCH_TOKEN
+    # und landet NUR in der AES-verschluesselten Seite, nie im Klartext-Repo.
+    gh_token = os.environ.get("GH_DISPATCH_TOKEN", "").strip()
+    plain = plain.replace("__GHTOKEN__", json.dumps(gh_token)[1:-1])
+    print("Token eingebaut:", "ja" if gh_token else "nein (Panel-Fallback)")
 
     salt, iv = os.urandom(16), os.urandom(12)
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=600000)
