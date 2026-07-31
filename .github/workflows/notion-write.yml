@@ -86,6 +86,7 @@ jobs:
         if: steps.diff.outputs.changed == 'yes' || github.event_name != 'schedule'
         env:
           PAGES_PASSWORD: ${{ secrets.PAGES_PASSWORD }}
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
         run: |
           python3 build.py "$PAGES_PASSWORD"
           rm -f data.json
